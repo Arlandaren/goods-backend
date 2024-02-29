@@ -1,10 +1,17 @@
 package router
 
-import "github.com/gin-gonic/gin"
+import (
+	"server/pkg/handlers"
+
+	"github.com/gin-gonic/gin"
+)
 
 func RouteAll(r *gin.Engine){
 	api := r.Group("api")
 	{
-		api.GET("")
+		good := api.Group("goods")
+		{
+			good.GET("list",handlers.ListGoods)
+		}
 	}
 }

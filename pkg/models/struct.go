@@ -17,3 +17,7 @@ type Meta struct {
     Removed int `json:"removed"`
     Total   int `json:"total"`
 }
+type CreateRequest struct{
+	Name string `json:"name"`
+	Description string `json:"description"`
+}

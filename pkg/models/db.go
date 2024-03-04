@@ -67,32 +67,71 @@ func MigrateTables() error {
 	return nil
 }
 
-func GetGoodsFromDB(limit int, offset int)(*[]Good,*Meta,error){
+func GetGoodsFromDB(limit int, offset int) (*[]Good, *Meta, error) {
 	var goods []Good
 	var total int
 	var removed_count int
 	query_goods := `SELECT * FROM goods LIMIT $1 OFFSET $2`
 	query_total := `SELECT COUNT(*) FROM goods`
 	query_removed := `SELECT COUNT(*) FROM goods WHERE removed = true`
-	err := db.Select(&goods,query_goods,limit,offset)
-	if err != nil{
-		return nil,nil,err
+	err := db.Select(&goods, query_goods, limit, offset)
+	if err != nil {
+		return nil, nil, err
 	}
-	err = db.Get(&total,query_total)	
-	if err != nil{
-		return nil,nil,err
+	err = db.Get(&total, query_total)
+	if err != nil {
+		return nil, nil, err
 	}
-	err = db.Get(&removed_count,query_removed)	
-	if err != nil{
-		return nil,nil,err
+	err = db.Get(&removed_count, query_removed)
+	if err != nil {
+		return nil, nil, err
 	}
 	meta := Meta{
-		Limit: limit,
-		Offset: offset,
+		Limit:   limit,
+		Offset:  offset,
 		Removed: removed_count,
-		Total: total,
+		Total:   total,
 	}
-	return &goods,&meta,err
+	return &goods, &meta, err
 }
+func RemoveGoodFromDb(id int, project_id int) error {
+    tx, err := db.Beginx()
+    if err != nil {
+        return err
+    }
+    defer tx.Rollback()
 
-	
+    _, err = tx.Exec("LOCK TABLE goods IN SHARE ROW EXCLUSIVE MODE")
+    if err != nil {
+        return err
+    }
+
+    _, err = tx.Exec("DELETE FROM goods WHERE id = $1 AND project_id = $2", id, project_id)
+    if err != nil {
+        return err
+    }
+
+    return tx.Commit()
+}
+func CreateGoodToDB(name string, projectId int) (*Good, error) {
+    tx, err := db.Beginx()
+    if err != nil {
+        return nil, err
+    }
+    defer tx.Rollback()
+
+    var good Good
+    query := `
+        WITH inserted AS (
+            INSERT INTO goods (name, project_id,description, priority)
+            SELECT $1, $2, $3, COALESCE((SELECT MAX(priority) FROM goods), 0) + 1
+            RETURNING *
+        )
+        SELECT * FROM inserted
+    `
+    if err := tx.Get(&good, query, name, projectId, ""); err != nil {
+        return nil, err
+    }
+
+    return &good, tx.Commit()
+}

@@ -28,3 +28,12 @@ func GetGoods(limit int,offset int)([]byte,error){
     }
 	return jsonData, nil
 }
+func RemoveGood(id int, project_id int) error {
+	if err := RemoveGoodFromDb(id,project_id); err != nil{
+		return err
+	}
+	if err := RemoveGoodFromRedis(id, project_id); err!=nil{
+		return err
+	}
+	return nil
+}
